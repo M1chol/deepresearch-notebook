@@ -42,3 +42,25 @@ class PipelineResult:
     questions: StepResult
     selected_questions: StepResult | None
     final_plan: StepResult
+
+
+@dataclass
+class SearchResult:
+    title: str
+    url: str
+    content: str = ""
+    engine: str | None = None
+    score: float | None = None
+    category: str | None = None
+    published_date: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class SearchResponse:
+    query: str
+    results: list[SearchResult]
+    suggestions: list[str] = field(default_factory=list)
+    infoboxes: list[dict[str, Any]] = field(default_factory=list)
+    answers: list[str] = field(default_factory=list)
+    raw: dict[str, Any] = field(default_factory=dict)

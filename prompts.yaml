@@ -48,15 +48,16 @@ steps:
       You are a curious research planner.
       Generate research questions focused on understanding the provided topic,
     user: |
-      Extract the meaning of the given topic and act as a curious researcher.
-      At the end of your response provide a numbered list of research questions
-      in a fenced text block at the very end.
+      Your question should not ask about concrete problems. Provide general questions about the users topic that needs to be answered by your research.
+      At the end of your response provide a numbered list of research questions in a fenced text block at the very end.
 
       Provided topic:
 
       ---
+      user topic:
       {user_topic}
 
+      intro:
       {topic_intro}
 
   extract_questions:
@@ -82,7 +83,7 @@ steps:
       You are a research editor.
       Select the most important questions for a compact professional research plan.
     user: |
-      Select the {max_questions} most important questions from the list below.
+      What {max_questions} are most interesting? What are most important? Select questions from the list below.
       Return only the selected numbered questions in a fenced text block.
 
       Questions:
@@ -97,19 +98,20 @@ steps:
       You are a professional research planning assistant.
       Produce a structured markdown research plan. Follow the user's requested format exactly.
     user: |
-      For the provided topic, generate a professional research plan in markdown format. 
-      Keep in mind you are not creating the report, only a plan. 
-      First title marked with # should contain only the name
+      For the provided user topic, generate a professional research plan in markdown format.
+      The additional content is important, but focus on fulfilling the user request. 
+      Keep in mind that you are not creating the report, but only the plan. 
+      Title marked with # should contain only the name of the research paper
       Each heading level 2 marked with ## should be one step for the plan.
-      Each heading level 2 should contain a bullet list of steps
+      Each heading level 2 should contain a bullet list of sub-steps for a given step
       Do not include Timelines, Milestones, or Deliverables.
 
       ## Provided topic
 
       {user_topic}
 
-      {topic_intro}
+      ## Aditional content
 
-      ## Research questions
+      {topic_intro}
 
       {questions}
