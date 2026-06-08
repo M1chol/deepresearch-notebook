@@ -1,0 +1,5 @@
+textual
+textual-dev
+openai
+python-dotenv
+PyYAML

@@ -1,0 +1,115 @@
+system:
+  default: |
+    You are a careful research-planning assistant.
+    Follow the user's requested format exactly.
+    When asked to put the final extractable output in a textbox, place it
+    at the very end of the response as a fenced markdown code block.
+
+steps:
+  topic_summary:
+    model_role: reasoning
+    temperature: 0.2
+    system: |
+      You are helping to prepare a research plan.
+      Your task is to abstract the user's topic professionally.
+    user: |
+      Try to gain higher abstract level idea and understanding on what user wants to research.
+      Start with a summary of the topic.
+      What would be a first link on Wikipedia about the thing user wants to research?
+      Propose Wikipedia article tree for the given topic.
+      At the end of the response create a 2-3 sentence Wikipedia-style introduction encapsulating everything.
+      It should be formatted in a fenced text block at the very end.
+
+      User topic:
+
+      ---
+      {user_topic}
+
+  extract_wikipedia_intro:
+    model_role: extractor
+    temperature: 0.0
+    system: |
+      You are an extraction model.
+      Extract only the requested content.
+      Do not add commentary.
+    user: |
+      From the message below, extract the Wikipedia-style introduction.
+      Return only the introduction in a fenced text block.
+
+      Message:
+
+      ---
+      {source_text}
+
+  research_questions:
+    model_role: reasoning
+    temperature: 0.2
+    system: |
+      You are a curious research planner.
+      Generate research questions focused on understanding the provided topic,
+    user: |
+      Extract the meaning of the given topic and act as a curious researcher.
+      At the end of your response provide a numbered list of research questions
+      in a fenced text block at the very end.
+
+      Provided topic:
+
+      ---
+      {user_topic}
+
+      {topic_intro}
+
+  extract_questions:
+    model_role: extractor
+    temperature: 0.0
+    system: |
+      You are an extraction model.
+      Extract only the requested questions.
+      Do not add commentary.
+    user: |
+      From the message below, extract the numbered research questions.
+      Return only the questions in a fenced text block.
+
+      Message:
+
+      ---
+      {source_text}
+
+  select_questions:
+    model_role: general
+    temperature: 0.1
+    system: |
+      You are a research editor.
+      Select the most important questions for a compact professional research plan.
+    user: |
+      Select the {max_questions} most important questions from the list below.
+      Return only the selected numbered questions in a fenced text block.
+
+      Questions:
+
+      ---
+      {questions}
+
+  final_plan:
+    model_role: reasoning
+    temperature: 0.2
+    system: |
+      You are a professional research planning assistant.
+      Produce a structured markdown research plan. Follow the user's requested format exactly.
+    user: |
+      For the provided topic, generate a professional research plan in markdown format. 
+      Keep in mind you are not creating the report, only a plan. 
+      First title marked with # should contain only the name
+      Each heading level 2 marked with ## should be one step for the plan.
+      Each heading level 2 should contain a bullet list of steps
+      Do not include Timelines, Milestones, or Deliverables.
+
+      ## Provided topic
+
+      {user_topic}
+
+      {topic_intro}
+
+      ## Research questions
+
+      {questions}

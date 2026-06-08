@@ -1,0 +1,17 @@
+[project]
+name = "research-pipeline"
+version = "0.1.0"
+description = "Modular research planning pipeline using OpenRouter"
+requires-python = ">=3.10"
+dependencies = [
+  "httpx>=0.27.0",
+  "python-dotenv>=1.0.1",
+  "pydantic>=2.7.0",
+  "PyYAML>=6.0.1",
+]
+
+[project.scripts]
+research-pipeline = "research_pipeline.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["research_pipeline*"]

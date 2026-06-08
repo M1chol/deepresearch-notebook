@@ -1,0 +1,21 @@
+#title{
+    color: $panel;
+    padding: 0 4;
+}
+
+#main {
+    color: $panel;
+    padding: 0 1;
+    margin: 0 3;
+}
+
+#input {
+    align: center top;
+    margin: 1 0;
+    box-sizing: border-box;
+    max-height: 50%;
+}
+
+Label {
+    padding: 0 1;
+}
