@@ -27,6 +27,8 @@ def default_config(
             reasoning="moonshotai/kimi-k2.6",
             general="moonshotai/kimi-k2.6",
             extractor="google/gemma-4-26b-a4b-it",
+            cheap="google/gemma-4-26b-a4b-it",
+            mid="google/gemma-4-26b-a4b-it",
         ),
         prompt_file=prompt_file,
         max_questions=max_questions,

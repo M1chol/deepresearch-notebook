@@ -15,6 +15,8 @@ class ModelConfig:
     reasoning: str
     general: str
     extractor: str
+    cheap: str
+    mid: str
 
 
 @dataclass
@@ -37,11 +39,25 @@ class StepResult:
 
 
 @dataclass
+class LLMCallStats:
+    operation: str
+    model: str
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    reasoning_tokens: int = 0
+    total_tokens: int = 0
+    cost: float = 0.0
+    response_seconds: float = 0.0
+    tokens_per_second: float = 0.0
+
+
+@dataclass
 class PipelineResult:
     topic_intro: StepResult
     questions: StepResult
     selected_questions: StepResult | None
     final_plan: StepResult
+    steps: dict[str, StepResult] = field(default_factory=dict)
 
 
 @dataclass

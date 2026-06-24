@@ -115,3 +115,157 @@ steps:
       {topic_intro}
 
       {questions}
+
+  construct_search_query:
+    model_role: cheap
+    temperature: 0.0
+    system: |
+      You create precise web-search queries. Return only the query.
+    user: |
+      Create one concise search query for this research-plan point.
+      Include enough context from the step to disambiguate it.
+
+      Step: {step}
+      Point: {point}
+
+  broaden_search_query:
+    system: |
+      You improve web-search recall. Return only one search query.
+      Broaden wording but preserve the user's core domain.
+    user: |
+      The previous query produced no useful results. Rewrite it as a broader,
+      shorter search query. Remove overly narrow phrasing, quotes, and academic language, but preserve the meaning.
+
+      Step: {step}
+      Research point: {point}
+      Previous query: {query}
+      Retry reason: {reason}
+
+  select_useful_results:
+    model_role: mid
+    temperature: 0.1
+    reasoning:
+      effort: none
+    system: |
+      You select useful web-search results. Return only JSON.
+    user: |
+      Select results that are directly useful for answering the research point.
+      Return a JSON array containing only the selected zero-based result indexes,
+      for example [0, 2]. Prefer authoritative and primary sources.
+
+      Step: {step}
+      Point: {point}
+      Query: {query}
+
+      Results:
+      {results}
+
+  summarize_page:
+    model_role: cheap
+    temperature: 0.1
+    system: |
+      You summarize source material faithfully and concisely.
+    user: |
+      Summarize the scraped page for the research point. Preserve concrete facts,
+      qualifications, dates, and disagreements. Do not invent missing information.
+
+      Step: {step}
+      Point: {point}
+      Source URL: {url}
+
+      Page text:
+      {page_text}
+
+  summarize_step:
+    model_role: mid
+    temperature: 0.1
+    reasoning:
+      effort: none
+    system: |
+      You synthesize research evidence without inventing facts.
+    user: |
+      Synthesize the collected source summaries for this research-plan step.
+      Organize the answer by point, retain source URLs, and identify evidence gaps.
+
+      Step: {step}
+
+      Collected results:
+      {point_results}
+
+  final_report:
+    model_role: reasoning
+    temperature: 0.2
+    system: |
+      You are a research report editor. Produce a rigorous, readable Markdown
+      report grounded only in the supplied research data.
+    user: |
+      Write the final research report. Follow the research plan, combine the
+      evidence from every step, preserve source URLs, distinguish evidence from
+      inference, mention material gaps, and do not invent unsupported facts.
+
+      Original topic:
+      {user_topic}
+
+      Research plan:
+      {research_plan}
+
+      Collected research:
+      {research_data}
+
+pipeline:
+  steps:
+    - name: topic_intro
+      prompt: topic_summary
+      variables:
+        user_topic: "{user_topic}"
+      extract: [fenced_block]
+      fallback:
+        prompt: extract_wikipedia_intro
+        variables:
+          source_text: "{raw}"
+        extract: [fenced_block, strip]
+      human_edit_title: Generated topic introduction
+
+    - name: questions
+      prompt: research_questions
+      variables:
+        user_topic: "{user_topic}"
+        topic_intro: "{topic_intro}"
+      extract: [fenced_block, numbered_lines]
+      fallback:
+        prompt: extract_questions
+        variables:
+          source_text: "{raw}"
+        extract: [fenced_block, strip, numbered_lines]
+      human_edit_title: Generated research questions
+
+    - name: selected_questions
+      condition: "present:max_questions"
+      prompt: select_questions
+      variables:
+        questions: "{questions}"
+        max_questions: "{max_questions}"
+      extract: [fenced_block, strip, numbered_lines]
+      metadata:
+        max_questions: "{max_questions}"
+      human_edit_title: Selected research questions
+
+    - name: final_plan
+      prompt: final_plan
+      variables:
+        user_topic: "{user_topic}"
+        topic_intro: "{topic_intro}"
+        questions: "{selected_questions|questions}"
+      extract: [strip]
+
+research:
+  max_query_attempts: 3
+  query_prompt: construct_search_query
+  broaden_query_prompt: broaden_search_query
+  result_selection_prompt: select_useful_results
+  page_summary_prompt: summarize_page
+  step_summary_prompt: summarize_step
+  final_step:
+    name: final_report
+    prompt: final_report
+    output: final_report.md

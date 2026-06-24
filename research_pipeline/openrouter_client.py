@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable, Iterator
+import time
+from collections.abc import Callable, Iterable, Iterator
+from typing import Any
 
 import httpx
 
-from .models import ChatMessage, PipelineConfig
+from .models import ChatMessage, LLMCallStats, PipelineConfig
 
 class OpenRouterClient:
     def __init__(self, api_key: str, config: PipelineConfig):
@@ -13,6 +15,8 @@ class OpenRouterClient:
         self.config = config
         self.base_url = config.openrouter_base_url.rstrip("/")
         self.client = httpx.Client(timeout=300)
+        self.stats: list[LLMCallStats] = []
+        self.on_stats: Callable[[LLMCallStats], None] | None = None
 
     def _headers(self) -> dict[str, str]:
         headers = {
@@ -35,8 +39,9 @@ class OpenRouterClient:
         messages: Iterable[ChatMessage],
         temperature: float,
         stream: bool,
+        reasoning: dict[str, Any] | None = None,
     ) -> dict:
-        return {
+        payload = {
             "model": model,
             "messages": [
                 {"role": message.role, "content": message.content}
@@ -45,6 +50,9 @@ class OpenRouterClient:
             "temperature": temperature,
             "stream": stream,
         }
+        if reasoning is not None:
+            payload["reasoning"] = reasoning
+        return payload
 
     def chat(
         self,
@@ -52,7 +60,10 @@ class OpenRouterClient:
         model: str,
         messages: Iterable[ChatMessage],
         temperature: float = 0.2,
+        reasoning: dict[str, Any] | None = None,
+        operation: str = "chat",
     ) -> str:
+        started = time.perf_counter()
         response = self.client.post(
             f"{self.base_url}/chat/completions",
             headers=self._headers(),
@@ -61,10 +72,17 @@ class OpenRouterClient:
                 messages=messages,
                 temperature=temperature,
                 stream=False,
+                reasoning=reasoning,
             ),
         )
         response.raise_for_status()
         data = response.json()
+        self._record_stats(
+            operation=operation,
+            model=data.get("model") or model,
+            usage=data.get("usage") or {},
+            response_seconds=time.perf_counter() - started,
+        )
         return data["choices"][0]["message"]["content"]
 
     def chat_stream(
@@ -73,7 +91,12 @@ class OpenRouterClient:
         model: str,
         messages: Iterable[ChatMessage],
         temperature: float = 0.2,
+        reasoning: dict[str, Any] | None = None,
+        operation: str = "chat_stream",
     ) -> Iterator[str]:
+        started = time.perf_counter()
+        usage: dict[str, Any] = {}
+        response_model = model
         with self.client.stream(
             "POST",
             f"{self.base_url}/chat/completions",
@@ -83,6 +106,7 @@ class OpenRouterClient:
                 messages=messages,
                 temperature=temperature,
                 stream=True,
+                reasoning=reasoning,
             ),
         ) as response:
             response.raise_for_status()
@@ -106,6 +130,9 @@ class OpenRouterClient:
                 except json.JSONDecodeError:
                     continue
 
+                if data.get("usage"):
+                    usage = data["usage"]
+                response_model = data.get("model") or response_model
                 choices = data.get("choices", [])
                 if not choices:
                     continue
@@ -114,6 +141,44 @@ class OpenRouterClient:
                 content = delta.get("content")
                 if content:
                     yield content
+        self._record_stats(
+            operation=operation,
+            model=response_model,
+            usage=usage,
+            response_seconds=time.perf_counter() - started,
+        )
+
+    def _record_stats(
+        self,
+        *,
+        operation: str,
+        model: str,
+        usage: dict[str, Any],
+        response_seconds: float,
+    ) -> None:
+        completion_tokens = int(usage.get("completion_tokens") or 0)
+        reasoning_tokens = int(
+            (usage.get("completion_tokens_details") or {}).get("reasoning_tokens")
+            or 0
+        )
+        stat = LLMCallStats(
+            operation=operation,
+            model=model,
+            prompt_tokens=int(usage.get("prompt_tokens") or 0),
+            completion_tokens=completion_tokens,
+            reasoning_tokens=reasoning_tokens,
+            total_tokens=int(usage.get("total_tokens") or 0),
+            cost=float(usage.get("cost") or 0.0),
+            response_seconds=response_seconds,
+            tokens_per_second=(
+                completion_tokens / response_seconds
+                if completion_tokens and response_seconds
+                else 0.0
+            ),
+        )
+        self.stats.append(stat)
+        if self.on_stats:
+            self.on_stats(stat)
 
     def close(self) -> None:
         self.client.close()

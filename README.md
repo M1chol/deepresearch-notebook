@@ -1,17 +1,21 @@
-# Deep Research Notebook v0.1
-Early prototype of my ChatGPT-style deep research workflow.
+# Deep Research Notebook v0.2
+Early version of my ChatGPT-style deep research workflow.
 
 Working:
 - Research planning phase
 - Topic expansion
 - Question generation and optional question selection
 - Final research plan output
+- YAML-defined pipeline orchestration
+- Per-plan-point web search through SearxNG
+- Automatic broad-query retries when a search has no useful results
+- Cheap-model result selection and page summarization
+- Mid-model step synthesis
+- Final report generation from all collected step and source summaries
+- Per-call token, cost, latency, and throughput statistics
 - Human in the loop questioning
-- Streaming / non streaming
 
 Planned:
-- Search phase
-- Final report generation
 - Review loop
 - Textual UI
 - Research effort selection
@@ -19,8 +23,15 @@ Planned:
 
 The UI is not yet working as the main workflow interface, use CLI instead.
 
-Current run statistics:
-planning phase: 12k-17k tokens or about 0.04$-0.06$ on KimiK2.6
+## Current single run statistics:
+- Calls: 147
+- Prompt tokens: 552,599
+- Completion tokens: 42,439
+- Reasoning tokens: 21,551
+- Total tokens: 595,038
+- Cost: $0.170518
+- LLM response time: 1772.67s
+- Completion throughput: 23.9 tok/s
 
 ## Setup
 
@@ -59,8 +70,25 @@ Useful options:
 research-pipeline --help
 research-pipeline "Your research topic" --max-questions 5
 research-pipeline --topic-file topic.md --human-in-loop
-research-pipeline "Your research topic" --output research_plan.md
+research-pipeline "Your research topic"
+research-pipeline "Your research topic" --name custom-research-name
+research-pipeline "Your research topic" --skip-search
 ```
+
+The default folder name is derived from the generated `#` research title:
+
+```text
+results/generated-research-title/
+├── research_plan.md
+├── final_report.md
+├── nerd_stats.json
+├── nerd_stats.md
+├── planning/
+└── searches/
+```
+
+Search requires a SearxNG instance at `http://localhost:8080/search`. Use
+`--searxng-url` to select another JSON endpoint.
 
 Run the experimental UI module:
 
@@ -70,5 +98,7 @@ python -m  research_ui.research_cli
 ```
 ## Configuration
 Right now possible configurations include:
-- changing research prompts in `prompts.yaml`
-- modyfying default models in `config.py`
+- changing the complete pipeline workflow and prompts in `prompts.yaml`
+- modifying default cheap, mid, and reasoning models in `config.py`
+- configuring query retries and final report output under `research:` in
+  `prompts.yaml`
